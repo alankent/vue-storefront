@@ -1,50 +1,122 @@
 <template>
   <div id="home">
-    <!-- $t() is for translations, you can read more here: https://github.com/DivanteLtd/vue-storefront/blob/master/doc/Working%20with%20data.md -->
-    <img src="assets/logo.svg" :alt="$t('Vue Storefront Logo')">
-    <section>
-      <h1>{{ $t('Welcome to Vue Storefront theme starter') }}</h1>
-      <p>{{ $t("In case of any problems please take a look at the docs. If you havn't find what you were looking for in docs feel free to ask your question on our Slack") }}</p>
+    <main-slider />
+
+    <promoted-offers/>
+
+    <section class="new-collection container px15">
+      <div>
+        <header class="col-md-12">
+          <h2 class="align-center cl-accent">{{ $t('Everything new') }}</h2>
+        </header>
+      </div>
+      <div class="row center-xs">
+        <product-listing columns="4" :products="everythingNewCollection" />
+      </div>
     </section>
-    <section>
-      <p>{{ $t('Under /pages directiry you can find some predefined pages to speed up your development (based on VS example data, can be empty if you are using different data source)') }}:</p>
-      <p><router-link to="/p/MS08/strike-endurance-tee-627/MS08">Product Page</router-link> | <router-link to="/c/women-20">Category Page</router-link></p>
+
+    <collection :title="$t('New Luma Yoga Collection')" cover-image="/assets/collection.jpg" category="Women"/>
+
+    <section class="container pb60">
+      <div class="row center-xs">
+        <header class="col-md-12 pt40">
+          <h2 class="align-center cl-accent">{{ $t('Get inspired') }}</h2>
+        </header>
+      </div>
+      <tile-links />
     </section>
-    <section>
-      <h3>{{ $t('Here are some links that can help you with developing your own theme') }}:</h3>
-      <p>
-        <a href="https://github.com/DivanteLtd/vue-storefront/blob/master/doc/Project%20structure.md">{{ $t('Project structure') }}</a> |
-        <a href="https://github.com/DivanteLtd/vue-storefront/blob/master/doc/themes/Working%20with%20themes.md">{{ $t('Working with themes') }}</a> |
-        <a href="https://github.com/DivanteLtd/vue-storefront/blob/master/doc/components/Working%20with%20components.md">{{ $t('Working with components') }}</a> |
-        <a href="https://github.com/DivanteLtd/vue-storefront/blob/master/doc/Working%20with%20data.md">{{ $t('Working with data') }}</a> |
-        <a href="https://github.com/DivanteLtd/vue-storefront/blob/master/doc/Working%20with%20data.md">{{ $t('Working with translations') }}</a>
-      </p>
-    </section>
+    <Onboard/>
   </div>
 </template>
 
 <script>
+import { corePage } from 'core/lib/themes'
+import builder from 'bodybuilder'
+import config from 'config'
+
+// Base components overwrite
+import MainSlider from '../components/core/blocks/MainSlider/MainSlider.vue'
+// import ProductTile from '../components/core/ProductTile.vue'
+import ProductListing from '../components/core/ProductListing.vue'
+
+import PromotedOffers from '../components/theme/blocks/PromotedOffers/PromotedOffers.vue'
+import TileLinks from '../components/theme/blocks/TileLinks/TileLinks.vue'
+import Collection from '../components/theme/blocks/Collection/Collection'
+import Onboard from '../components/theme/blocks/Home/Onboard.vue'
+
 export default {
+  created () {
+    // Load personal and shipping details for Checkout page from IndexedDB
+    this.$store.dispatch('checkout/load')
+  },
+  beforeMount () {
+    if (global.$VS.__DEMO_MODE__) {
+      this.$store.dispatch('claims/check', { claimCode: 'onboardingAccepted' }).then((onboardingClaim) => {
+        if (!onboardingClaim) { // show onboarding info
+          this.$bus.$emit('modal-toggle', 'modal-onboard')
+          this.$store.dispatch('claims/set', { claimCode: 'onboardingAccepted', value: true })
+        }
+      })
+    }
+  },
+  computed: {
+    categories () {
+      return this.$store.state.category.list
+    },
+    everythingNewCollection () {
+      return this.$store.state.homepage.new_collection
+    },
+    coolBagsCollection () {
+      return this.$store.state.homepage.coolbags_collection
+    }
+  },
+  asyncData ({ store, route }) { // this is for SSR purposes to prefetch data
+    return new Promise((resolve, reject) => {
+      console.log('Entering asyncData for Home ' + new Date())
+      let newProductsQuery = builder().query('match', 'category.name', 'Tees').andFilter('range', 'visibility', { 'gte': 2, 'lte': 4 }/** Magento visibility in search & categories */).build()
+      let coolBagsQuery = builder().query('match', 'category.name', 'Women').andFilter('range', 'visibility', { 'gte': 2, 'lte': 4 }/** Magento visibility in search & categories */).build()
+      store.dispatch('category/list', { includeFields: config.entities.optimize ? config.entities.category.includeFields : null }).then((categories) => {
+        store.dispatch('product/list', {
+          query: newProductsQuery,
+          size: 8,
+          sort: 'created_at:desc',
+          includeFields: config.entities.optimize ? config.entities.productList.includeFields : []
+        }).then(function (res) {
+          if (res) {
+            store.state.homepage.new_collection = res.items
+          }
+
+          store.dispatch('product/list', {
+            query: coolBagsQuery,
+            size: 4,
+            sort: 'created_at:desc',
+            includeFields: config.entities.optimize ? config.entities.productList.includeFields : []
+          }).then(function (res) {
+            if (res) {
+              store.state.homepage.coolbags_collection = res.items
+            }
+            return resolve()
+          })
+        })
+      })
+    })
+  },
   components: {
-    // Place page-specific components here
-  }
+    ProductListing,
+    MainSlider,
+    PromotedOffers,
+    TileLinks,
+    Collection,
+    Onboard
+  },
+  mixins: [corePage('Home')]
 }
 </script>
 
-<style scoped>
-#home {
-  text-align: center;
-  font-family: Arial;
-  margin: 20px auto;
-  max-width: 650px;
-}
-
-#home img {
-  width: 200px;
-}
-
-a {
-  text-decoration: none;
-  color: #2b875c;
-}
+<style lang="scss" scoped>
+  .new-collection {
+    @media (max-width: 767px) {
+      padding-top: 0;
+    }
+  }
 </style>

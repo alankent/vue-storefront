@@ -1,19 +1,184 @@
 <template>
   <div id="category">
-    <h1>Category Page </h1>
-    <router-link to="/">Back to home </router-link>
-    <h2> Category JSON </h2>
-    <p> {{ category }} </p>
+    <header class="bg-cl-secondary py35 pl20">
+      <div class="container">
+        <breadcrumbs :routes="breadcrumbs.routes" :active-route="category.name" />
+        <h1 class="category-title mb10"> {{ category.name }} </h1>
+      </div>
+      <div class="container">
+        <div class="row m0">
+          <button
+            class="col-xs-5 mt25 p15 mobile-filters-button bg-cl-th-accent brdr-none cl-white h5 sans-serif fs-medium-small"
+            @click="openFilters"
+          >
+            {{ $t('Filters') }}
+          </button>
+        </div>
+      </div>
+    </header>
+    <div class="container pb60">
+      <div class="row m0 pt15 center-md">
+        <div class="col-md-3 start-xs category-filters">
+          <sidebar :filters="filters.available"/>
+        </div>
+        <div class="col-md-3 start-xs mobile-filters" v-if="mobileFilters">
+          <div class="close-container absolute w-100">
+            <i class="material-icons p15 close cl-accent" @click="closeFilters">close</i>
+          </div>
+          <sidebar class="mobile-filters-body" :filters="filters.available"/>
+        </div>
+        <p class="col-xs-12 hidden-md m0 px20 cl-secondary">{{ productsCounter }} items</p>
+        <div class="col-md-9 pt20 px10 border-box products-list">
+          <div v-if="isCategoryEmpty" class="hidden-xs">
+            {{ $t('No products found!') }}
+          </div>
+          <product-listing columns="3" :products="products" />
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script>
-// Here we are importing Core Page module responsible for business logic injection
 import { corePage } from 'core/lib/themes'
+import Sidebar from '../components/core/blocks/Category/Sidebar.vue'
+import ProductListing from '../components/core/ProductListing.vue'
+import Breadcrumbs from '../components/core/Breadcrumbs.vue'
+import { buildFilterProductsQuery } from '@vue-storefront/store/helpers'
 
 export default {
-  // Here we are injecting core Category Page business logic (you can find it under core/pages/Product.vue)
-  // You can find the docs for Category Page here: https://github.com/DivanteLtd/vue-storefront/blob/master/doc/components/core/CategoryPage.md
+  components: {
+    ProductListing,
+    Breadcrumbs,
+    Sidebar
+  },
+  data () {
+    return {
+      bottom: false,
+      mobileFilters: false
+    }
+  },
+  created () {
+    if (!global.$VS.isSSR) {
+      window.addEventListener('scroll', () => {
+        this.bottom = this.bottomVisible()
+      })
+    }
+  },
+  methods: {
+    bottomVisible () {
+      const scrollY = window.scrollY
+      const visible = document.documentElement.clientHeight
+      const pageHeight = document.documentElement.scrollHeight
+      const bottomOfPage = visible + scrollY >= pageHeight
+      return bottomOfPage || pageHeight < visible
+    },
+    pullMoreProducts () {
+      let currentQuery = this.currentQuery
+      currentQuery.append = true
+      currentQuery.route = this.$route
+      currentQuery.store = this.$store
+      currentQuery.current = currentQuery.current + currentQuery.perPage
+      this.pagination.current = currentQuery.current
+      this.pagination.perPage = currentQuery.perPage
+      if (currentQuery.current <= this.productsTotal) {
+        currentQuery.searchProductQuery = buildFilterProductsQuery(this.category, this.filters.chosen)
+        return this.$store.dispatch('category/products', currentQuery)
+      }
+    },
+    openFilters () {
+      this.mobileFilters = true
+    },
+    closeFilters () {
+      this.mobileFilters = false
+    }
+  },
+  watch: {
+    bottom (bottom) {
+      if (bottom) {
+        this.pullMoreProducts()
+      }
+    }
+  },
   mixins: [corePage('Category')]
 }
 </script>
+
+<style lang="scss" scoped>
+  .category-filters {
+    width: 242px;
+  }
+
+  .mobile-filters {
+    display: none;
+    overflow: auto;
+  }
+
+  .mobile-filters-button {
+    display: none;
+  }
+
+  .category-title {
+    line-height: 65px;
+  }
+
+  @media (max-width: 64em) {
+    .products-list {
+      max-width: 530px;
+    }
+  }
+
+  @media (max-width: 770px) {
+    .category-title {
+      margin: 0;
+      font-size: 36px;
+      line-height: 40px;
+    }
+
+    .products-list {
+      width: 100%;
+      max-width: none;
+    }
+
+    .mobile-filters {
+      display: block;
+    }
+
+    .mobile-filters-button {
+      display: block;
+      height: 45px;
+    }
+
+    .category-filters {
+      display: none;
+    }
+
+    .product-listing {
+      justify-content: center;;
+    }
+
+    .mobile-filters {
+      position: fixed;
+      background-color: #F2F2F2;
+      z-index: 5;
+      padding: 0 40px;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      top: 0;
+      box-sizing: border-box;
+    }
+
+    .mobile-filters-body {
+      padding-top: 50px;
+    }
+  }
+
+  .close-container {
+    left: 0;
+  }
+
+  .close {
+    margin-left: auto;
+  }
+</style>

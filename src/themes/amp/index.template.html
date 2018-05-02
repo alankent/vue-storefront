@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html ⚡ data-vue-meta-server-rendered {{{ meta.inject().htmlAttrs.text() }}}>
+  <head>
+		<!-- AMP requires charset to be first. -->
+		<meta charset="utf-8">
+  	{{{ meta.inject().title.text() }}}
+  	{{{ meta.inject().meta.text() }}}
+		{{{ meta.inject().link.text() }}}
+
+		<!-- Required settings by AMP. -->
+		<meta name="viewport" content="width=device-width,minimum-scale=1,initial-scale=1">
+			
+		<!-- TODO: The old script code is not allowed. Need to work out correct URL to use. -->
+		<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Playfair+Display">
+		<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto">
+		<!-- TODO: REMOVE THE FOLLOWING ONCE THE ABOVE FONTS WORK.
+		<script type="text/javascript">
+			WebFontConfig = {
+				google: { families: [ 'Playfair+Display:400,700', 'Roboto:400,700' ] }
+			};
+			(function() {
+				var wf = document.createElement('script');
+				wf.src = ('https:' == document.location.protocol ? 'https' : 'http') +
+				'://ajax.googleapis.com/ajax/libs/webfont/1.5.18/webfont.js';
+				wf.type = 'text/javascript';
+				wf.async = 'true';
+				var s = document.getElementsByTagName('script')[0];
+				s.parentNode.insertBefore(wf, s);
+			})(); 
+		</script>
+	-->
+
+	  <!-- TODO: Eventually want it to be an error if .js files are found here! -->
+    <% for (var chunk of webpack.chunks) {
+        for (var file of chunk.files) {
+          if (file.match(/\.(js|css)$/)) { %>
+		<link rel="<%= chunk.initial?'preload':'prefetch' %>" href="<%= htmlWebpackPlugin.files.publicPath + file %>" as="<%= file.match(/\.css$/)?'style':'script' %>"><% }}} %>
+		<!-- TODO: Alan's attempt at inline the CSS into one <style> element. -->
+		<style amp-custom>
+      <% for (var chunk of webpack.chunks) {
+			  for (var file of chunk.files) {
+				  if (file.match(/\.css$/)) { %>
+						<%= file.contents %>
+					<% }
+				}
+			} %>
+		</style>
+		
+		<!-- Standard AMP stuff comes last. -->
+		<style amp-boilerplate>body{-webkit-animation:-amp-start 8s steps(1,end) 0s 1 normal both;-moz-animation:-amp-start 8s steps(1,end) 0s 1 normal both;-ms-animation:-amp-start 8s steps(1,end) 0s 1 normal both;animation:-amp-start 8s steps(1,end) 0s 1 normal both}@-webkit-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@-moz-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@-ms-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@-o-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}</style><noscript><style amp-boilerplate>body{-webkit-animation:none;-moz-animation:none;-ms-animation:none;animation:none}</style></noscript>
+    <script async src="https://cdn.ampproject.org/v0.js"></script>
+  </head>
+  <body>
+    <!--vue-ssr-outlet-->
+  </body>
+</html>
